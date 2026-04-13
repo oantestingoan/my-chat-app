@@ -1,38 +1,121 @@
-/* AD STYLING */
-.ad-slot {
-    width: 100%;
-    margin: 10px 0;
-    background: rgba(128, 128, 128, 0.1);
-    border: 1px dashed #555;
-    text-align: center;
-    overflow: hidden;
-    min-height: 90px;
-    display: flex;
+:root {
+    --primary: #007bff;
+    --bg: #0f1011;
+    --card: #1c1e21;
+    --text: #ffffff;
+    --input: #2a2d31;
+    --border: #3e4247;
+}
+
+.light-theme {
+    --bg: #f0f2f5;
+    --card: #ffffff;
+    --text: #1c1e21;
+    --input: #f0f2f5;
+    --border: #ddd;
+}
+
+body { 
+    font-family: 'Inter', -apple-system, sans-serif; 
+    background-color: var(--bg); 
+    color: var(--text); 
+    margin: 0; 
+    display: flex; 
+    justify-content: center; 
+    min-height: 100vh;
+    transition: background 0.3s ease;
+}
+
+#app, #modal { 
+    width: 95%; 
+    max-width: 450px; 
+    background: var(--card); 
+    padding: 25px; 
+    border-radius: 24px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4); 
+    margin-top: 20px;
+    height: fit-content;
+}
+
+/* AVATAR BOX FIX */
+#avatar-preview, .chat-avatar { 
+    width: 80px; 
+    height: 80px; 
+    border-radius: 20px; 
+    border: 3px solid #000; 
+    display: flex; 
     flex-direction: column;
-    justify-content: center;
+    align-items: center; 
+    justify-content: center; 
+    font-family: monospace; 
+    font-weight: bold; 
+    margin: 0 auto 20px;
+    line-height: 1.2;
+    overflow: hidden;
 }
 
-.top-ad {
-    max-height: 100px;
+.chat-avatar { 
+    width: 45px; 
+    height: 45px; 
+    font-size: 10px; 
+    margin: 0 12px 0 0; 
+    border-width: 2px;
 }
 
-.ad-placeholder {
-    padding: 10px;
-    font-size: 12px;
-    color: #888;
+/* BUTTONS & INPUTS */
+button { 
+    border-radius: 12px; 
+    padding: 12px 20px; 
+    font-weight: 600; 
+    cursor: pointer; 
+    border: none; 
+    transition: 0.2s;
 }
 
-#waiting-ad {
-    background: #000;
-    border-radius: 15px;
+.big-btn { 
+    width: 100%; 
+    background: var(--primary); 
+    color: white; 
+    font-size: 18px; 
     padding: 20px;
-    margin-bottom: 10px;
-    border: 2px solid #ff9f43;
 }
 
-/* MOBILE FIX: Smaller ads on phones */
-@media (max-width: 600px) {
-    .ad-slot {
-        min-height: 50px;
-    }
+input[type="text"] { 
+    width: 100%; 
+    box-sizing: border-box;
+    padding: 14px; 
+    background: var(--input); 
+    border: 1px solid var(--border); 
+    color: var(--text); 
+    border-radius: 12px; 
+    margin: 15px 0; 
+}
+
+/* CHAT AREA */
+#messages { 
+    height: 400px; 
+    background: var(--input); 
+    border-radius: 18px; 
+    padding: 15px; 
+    overflow-y: auto; 
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+}
+
+.msg-row { 
+    display: flex; 
+    align-items: center; 
+    margin-bottom: 15px; 
+}
+
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+.ad-slot { 
+    background: var(--input); 
+    border: 1px dashed var(--border); 
+    border-radius: 12px; 
+    padding: 10px; 
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: #888;
 }
