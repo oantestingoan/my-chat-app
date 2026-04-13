@@ -10,8 +10,8 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 
 let waitingUser = null; 
-// MODERATION: Add any words you want to block here
-const BANNED_WORDS = ['slur1', 'inappropriate1', 'badword']; 
+let onlineCount = 0; // TRACKER START
+const BANNED_WORDS = ['slur1', 'badword']; 
 
 function filterText(text) {
     let filtered = text;
@@ -23,7 +23,9 @@ function filterText(text) {
 }
 
 io.on('connection', (socket) => {
-    // Save user profile to their socket
+    onlineCount++;
+    io.emit('user-count', onlineCount); // Tell everyone someone joined
+
     socket.on('set-profile', (data) => {
         const cleanName = filterText(data.username).substring(0, 15);
         socket.userData = { username: cleanName, avatar: data.avatar };
@@ -68,20 +70,16 @@ io.on('connection', (socket) => {
 
     socket.on('send-private-msg', (data) => {
         const cleanMsg = filterText(data.msg);
-        // Send to partner
-        socket.to(data.room).emit('chat-message', { 
-            user: socket.userData.username, 
-            avatar: socket.userData.avatar,
-            text: cleanMsg 
-        });
-        // Send to self
+        socket.to(data.room).emit('chat-message', { user: socket.userData.username, avatar: socket.userData.avatar, text: cleanMsg });
         socket.emit('chat-message', { user: 'You', text: cleanMsg });
     });
 
     socket.on('disconnect', () => {
+        onlineCount--;
+        io.emit('user-count', onlineCount); // Tell everyone someone left
         if (waitingUser === socket.id) waitingUser = null;
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server live on ${PORT}`));
+server.listen(PORT, () => console.log(`Server live`));
