@@ -11,7 +11,7 @@ app.use(express.static(__dirname));
 
 let waitingUser = null; 
 let onlineCount = 0;
-const BANNED_WORDS = ['slur1', 'badword']; 
+const BANNED_WORDS = ['slur1', 'badword']; // Add words here
 
 function filterText(text) {
     let filtered = text;
@@ -31,23 +31,6 @@ io.on('connection', (socket) => {
         socket.userData = { username: cleanName, avatar: data.avatar, color: data.color };
     });
 
-    socket.on('join-room', (roomName) => {
-        socket.leaveAll();
-        socket.join(roomName);
-        socket.emit('chat-message', { user: 'System', text: `Joined: ${roomName}` });
-    });
-
-    socket.on('send-public-msg', (data) => {
-        const cleanMsg = filterText(data.msg);
-        io.to(data.room).emit('chat-message', { 
-            user: socket.userData.username, 
-            avatar: socket.userData.avatar,
-            color: socket.userData.color,
-            text: cleanMsg 
-        });
-    });
-
-    // RE-MATCH LOGIC
     socket.on('find-pair', () => {
         if (waitingUser && waitingUser !== socket.id) {
             const partnerId = waitingUser;
