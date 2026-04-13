@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonChat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <h1>AnonChat 🌐</h1>
+        
+        <div class="ad-container" style="min-height: 50px; background: #eee; margin-bottom: 10px; text-align: center;">
+            <small>Advertisement</small>
+            </div>
+        <div id="menu">
+            <button onclick="startPublic()">Join Public Room</button>
+            <button onclick="startPrivate()">Find 1-on-1 Partner</button>
+        </div>
+
+        <div id="chat-window" style="display:none;">
+            <div id="messages"></div>
+            <div class="input-area">
+                <input type="text" id="msgInput" placeholder="Type a message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+            <button onclick="location.reload()" style="margin-top:10px; background:red;">Exit Chat</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let mode = ''; // 'public' or 'private'
+
+        function startPublic() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('chat-window').style.display = 'block';
+            mode = 'public';
+            socket.emit('join-public');
+        }
+
+        function startPrivate() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('chat-window').style.display = 'block';
+            mode = 'private';
+            socket.emit('find-pair');
+        }
+
+        socket.on('pair-found', (data) => {
+            currentRoom = data.room;
+            addMessage('System', 'You are now chatting with a stranger!');
+        });
+
+        socket.on('chat-message', (data) => {
+            addMessage(data.user, data.text);
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('msgInput');
+            const val = input.value;
+            if (!val) return;
+
+            if (mode === 'public') {
+                socket.emit('send-public-msg', val);
+            } else if (currentRoom) {
+                socket.emit('send-private-msg', { room: currentRoom, msg: val });
+            }
+            input.value = '';
+        }
+
+        function addMessage(user, text) {
+            const msgDiv = document.getElementById('messages');
+            msgDiv.innerHTML += `<p><strong>${user}:</strong> ${text}</p>`;
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
