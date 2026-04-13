@@ -7,14 +7,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Since your files are all in one folder now:
 app.use(express.static(__dirname));
 
 let waitingUser = null; 
-const BANNED_WORDS = ['badword1', 'badword2']; 
+// MODERATION: Add any words you want to block here
+const BANNED_WORDS = ['slur1', 'inappropriate1', 'badword']; 
 
-function filterMessage(msg) {
-    let filtered = msg;
+function filterText(text) {
+    let filtered = text;
     BANNED_WORDS.forEach(word => {
         const reg = new RegExp(word, 'gi');
         filtered = filtered.replace(reg, '***');
@@ -23,25 +23,32 @@ function filterMessage(msg) {
 }
 
 io.on('connection', (socket) => {
-    // --- CUSTOM PUBLIC ROOMS ---
+    // Save user profile to their socket
+    socket.on('set-profile', (data) => {
+        const cleanName = filterText(data.username).substring(0, 15);
+        socket.userData = { username: cleanName, avatar: data.avatar };
+    });
+
     socket.on('join-room', (roomName) => {
-        socket.leaveAll(); // Leave previous rooms
+        socket.leaveAll();
         socket.join(roomName);
-        socket.emit('chat-message', { user: 'System', text: `Joined room: ${roomName}` });
+        socket.emit('chat-message', { user: 'System', text: `Joined: ${roomName}` });
     });
 
     socket.on('send-public-msg', (data) => {
-        const cleanMsg = filterMessage(data.msg);
-        io.to(data.room).emit('chat-message', { user: 'Anon', text: cleanMsg });
+        const cleanMsg = filterText(data.msg);
+        io.to(data.room).emit('chat-message', { 
+            user: socket.userData.username, 
+            avatar: socket.userData.avatar,
+            text: cleanMsg 
+        });
     });
 
-    // --- 1-ON-1 WITH AUTO-SKIP ---
     socket.on('find-pair', () => {
         if (waitingUser && waitingUser !== socket.id) {
             const partnerId = waitingUser;
             waitingUser = null;
             const roomName = `pair-${socket.id}-${partnerId}`;
-            
             socket.join(roomName);
             const partnerSocket = io.sockets.sockets.get(partnerId);
             if(partnerSocket) {
@@ -55,14 +62,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('skip', (roomName) => {
-        io.to(roomName).emit('partner-skipped'); // Tell both users someone skipped
-        // Force them to leave the room
+        io.to(roomName).emit('partner-skipped');
         io.in(roomName).socketsLeave(roomName);
     });
 
     socket.on('send-private-msg', (data) => {
-        const cleanMsg = filterMessage(data.msg);
-        socket.to(data.room).emit('chat-message', { user: 'Partner', text: cleanMsg });
+        const cleanMsg = filterText(data.msg);
+        // Send to partner
+        socket.to(data.room).emit('chat-message', { 
+            user: socket.userData.username, 
+            avatar: socket.userData.avatar,
+            text: cleanMsg 
+        });
+        // Send to self
         socket.emit('chat-message', { user: 'You', text: cleanMsg });
     });
 
@@ -72,4 +84,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running` bits));
+server.listen(PORT, () => console.log(`Server live on ${PORT}`));
