@@ -6,13 +6,14 @@
     <title>Omeguhl</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div id="overlay">
+<body class="dark-theme"> <div id="overlay">
         <div id="modal">
             <h2>Create Your Identity</h2>
             <div id="avatar-preview" style="background-color: #ffd933;">
-                <span id="char-eyes">o o</span><br>
-                <span id="char-mouth">___</span>
+                <div class="av-content">
+                    <span id="char-eyes">o o</span><br>
+                    <span id="char-mouth">___</span>
+                </div>
             </div>
             <div class="customizer">
                 <button onclick="changeFeature('eyes')">Eyes</button>
@@ -30,15 +31,14 @@
     <div id="app" style="display:none;">
         <div class="header">
             <h1>Omeguhl 🌐</h1>
-            <span id="counter-badge">🟢 <span id="count">0</span> Online</span>
+            <div class="controls">
+                <button onclick="toggleTheme()" class="theme-btn">🌓 Mode</button>
+                <span id="counter-badge">🟢 <span id="count">0</span> Online</span>
+            </div>
         </div>
         
         <div id="menu">
-            <div class="box">
-                <input type="text" id="roomInput" placeholder="Public Room Name">
-                <button onclick="joinPublic()">Join Room</button>
-            </div>
-            <button onclick="startPrivate()" class="big-btn">Find 1-on-1 Partner</button>
+            <button onclick="startPrivate()" class="big-btn">Start 1-on-1 Chat</button>
         </div>
 
         <div id="chat-window" style="display:none;">
@@ -56,12 +56,16 @@
     <script>
         const socket = io();
         let currentRoom = null;
-        let mode = '';
         let myColor = '#ffd933';
 
         const eyes = ["o o", "O O", "u u", "> <", "^ ^", "● ●"];
         const mouths = ["___", "  v  ", "  ◡  ", "  o  ", "  ~  "];
         let eyeIdx = 0, mouthIdx = 0;
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            document.body.classList.toggle('dark-theme');
+        }
 
         function updateColor() {
             myColor = document.getElementById('colorPicker').value;
@@ -80,42 +84,29 @@
         function enterSite() {
             const user = document.getElementById('usernameInput').value;
             if(!user || !document.getElementById('tosCheck').checked) return alert("Complete profile first!");
-            socket.emit('set-profile', { 
-                username: user, 
-                avatar: document.getElementById('avatar-preview').innerText,
-                color: myColor 
-            });
+            const av = document.querySelector('.av-content').innerHTML;
+            socket.emit('set-profile', { username: user, avatar: av, color: myColor });
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('app').style.display = 'block';
         }
 
-        function joinPublic() {
-            currentRoom = document.getElementById('roomInput').value || 'General';
-            mode = 'public';
-            showChat();
-            socket.emit('join-room', currentRoom);
-            document.getElementById('skipBtn').style.display = 'none';
-        }
-
         function startPrivate() {
-            mode = 'private';
-            showChat();
-            document.getElementById('skipBtn').style.display = 'block';
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('chat-window').style.display = 'block';
             socket.emit('find-pair');
         }
 
-        // ONE-CLICK SKIP FIX
         function handleSkip() {
             socket.emit('skip', currentRoom);
             currentRoom = null;
-            document.getElementById('messages').innerHTML = ""; // Clear chat
+            document.getElementById('messages').innerHTML = "";
             addMessage('System', '', '#888', 'Searching for a new partner...');
-            socket.emit('find-pair'); // Instantly look for someone else
+            socket.emit('find-pair');
         }
 
         socket.on('pair-found', (data) => {
             currentRoom = data.room;
-            document.getElementById('messages').innerHTML = ""; // Clear "Searching" text
+            document.getElementById('messages').innerHTML = "";
             addMessage('System', '', '#4cd137', 'Connected! Start chatting.');
         });
 
@@ -128,22 +119,16 @@
             addMessage(data.user, data.avatar, data.color, data.text);
         });
 
-        function showChat() {
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('chat-window').style.display = 'block';
-        }
-
         function sendMessage() {
             const msg = document.getElementById('msgInput').value;
-            if (!msg) return;
-            if (mode === 'public') socket.emit('send-public-msg', { room: currentRoom, msg: msg });
-            else if(currentRoom) socket.emit('send-private-msg', { room: currentRoom, msg: msg });
+            if (!msg || !currentRoom) return;
+            socket.emit('send-private-msg', { room: currentRoom, msg: msg });
             document.getElementById('msgInput').value = '';
         }
 
         function addMessage(user, avatar, color, text) {
             const msgDiv = document.getElementById('messages');
-            const av = avatar ? `<span class="chat-avatar" style="background-color:${color}">${avatar}</span>` : '';
+            const av = avatar ? `<div class="chat-avatar" style="background-color:${color}">${avatar}</div>` : '';
             msgDiv.innerHTML += `<div class="msg-row">${av} <strong style="color:${color}">${user}:</strong> ${text}</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         }
