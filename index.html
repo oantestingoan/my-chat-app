@@ -3,19 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnonChat</title>
+    <title>Omeguhl</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <h1>AnonChat 🌐</h1>
+    <div id="overlay">
+        <div id="modal">
+            <h2>Welcome to Omeguhl</h2>
+            <p>1. You must be 18 years or older.<br>
+               2. No harassment or bullying.<br>
+               3. Do not share personal info.</p>
+            <label>
+                <input type="checkbox" id="tosCheck"> I agree to the Terms of Service
+            </label>
+            <br><br>
+            <button onclick="enterSite()">Enter Chat</button>
+        </div>
+    </div>
+
+    <div id="app" style="display:none;">
+        <h1>Omeguhl 🌐</h1>
         
-        <div class="ad-container" style="min-height: 50px; background: #eee; margin-bottom: 10px; text-align: center;">
-            <small>Advertisement</small>
-            </div>
         <div id="menu">
-            <button onclick="startPublic()">Join Public Room</button>
-            <button onclick="startPrivate()">Find 1-on-1 Partner</button>
+            <div class="box">
+                <h3>Public Rooms</h3>
+                <input type="text" id="roomInput" placeholder="Room name (e.g. Music)">
+                <button onclick="joinPublic()">Join/Create Room</button>
+            </div>
+            <hr>
+            <div class="box">
+                <h3>Private</h3>
+                <button onclick="startPrivate()">Find 1-on-1 Partner</button>
+            </div>
         </div>
 
         <div id="chat-window" style="display:none;">
@@ -23,8 +42,9 @@
             <div class="input-area">
                 <input type="text" id="msgInput" placeholder="Type a message...">
                 <button onclick="sendMessage()">Send</button>
+                <button id="skipBtn" style="background:orange; display:none;" onclick="skipPartner()">Skip</button>
             </div>
-            <button onclick="location.reload()" style="margin-top:10px; background:red;">Exit Chat</button>
+            <button onclick="location.reload()" style="margin-top:10px; background:red;">Exit to Menu</button>
         </div>
     </div>
 
@@ -32,40 +52,68 @@
     <script>
         const socket = io();
         let currentRoom = null;
-        let mode = ''; // 'public' or 'private'
+        let mode = '';
 
-        function startPublic() {
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('chat-window').style.display = 'block';
+        function enterSite() {
+            if(document.getElementById('tosCheck').checked) {
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+            } else {
+                alert("You must agree to the terms first!");
+            }
+        }
+
+        function joinPublic() {
+            const rName = document.getElementById('roomInput').value || 'General';
+            currentRoom = rName;
             mode = 'public';
-            socket.emit('join-public');
+            showChat();
+            socket.emit('join-room', rName);
         }
 
         function startPrivate() {
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('chat-window').style.display = 'block';
             mode = 'private';
+            showChat();
+            document.getElementById('skipBtn').style.display = 'inline-block';
             socket.emit('find-pair');
+        }
+
+        function skipPartner() {
+            if(currentRoom) {
+                socket.emit('skip', currentRoom);
+            } else {
+                location.reload(); // If searching, just refresh
+            }
         }
 
         socket.on('pair-found', (data) => {
             currentRoom = data.room;
-            addMessage('System', 'You are now chatting with a stranger!');
+            addMessage('System', 'Connected! Say hello.');
+        });
+
+        socket.on('partner-skipped', () => {
+            addMessage('System', 'Partner skipped or disconnected.');
+            currentRoom = null;
+            document.getElementById('skipBtn').innerText = 'Find New';
+            document.getElementById('skipBtn').onclick = () => location.reload();
         });
 
         socket.on('chat-message', (data) => {
             addMessage(data.user, data.text);
         });
 
+        function showChat() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('chat-window').style.display = 'block';
+        }
+
         function sendMessage() {
             const input = document.getElementById('msgInput');
-            const val = input.value;
-            if (!val) return;
-
+            if (!input.value) return;
             if (mode === 'public') {
-                socket.emit('send-public-msg', val);
-            } else if (currentRoom) {
-                socket.emit('send-private-msg', { room: currentRoom, msg: val });
+                socket.emit('send-public-msg', { room: currentRoom, msg: input.value });
+            } else {
+                socket.emit('send-private-msg', { room: currentRoom, msg: input.value });
             }
             input.value = '';
         }
