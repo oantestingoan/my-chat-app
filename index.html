@@ -6,7 +6,8 @@
     <title>Omeguhl</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-theme"> <div id="overlay">
+<body class="dark-theme">
+    <div id="overlay">
         <div id="modal">
             <h2>Create Your Identity</h2>
             <div id="avatar-preview" style="background-color: #ffd933;">
@@ -29,6 +30,10 @@
     </div>
 
     <div id="app" style="display:none;">
+        <div class="ad-slot top-ad">
+            <small>Advertisement</small>
+            </div>
+
         <div class="header">
             <h1>Omeguhl 🌐</h1>
             <div class="controls">
@@ -42,7 +47,15 @@
         </div>
 
         <div id="chat-window" style="display:none;">
+            <div id="waiting-ad" class="ad-slot" style="display:none;">
+                <p>Finding a partner...</p>
+                <div class="ad-placeholder">
+                    <small>Ad appears while searching</small>
+                </div>
+            </div>
+
             <div id="messages"></div>
+            
             <div class="input-area">
                 <input type="text" id="msgInput" placeholder="Type a message...">
                 <button onclick="sendMessage()">Send</button>
@@ -74,7 +87,7 @@
 
         function changeFeature(type) {
             if(type === 'eyes') eyeIdx = (eyeIdx + 1) % eyes.length;
-            if(type === 'mouth') mouthIdx = (mouthIdx + 1) % mouths.length;
+            if(type === 'mouth') mouthIdx = (mouthIdx + 0) % mouths.length;
             document.getElementById('char-eyes').innerText = eyes[eyeIdx];
             document.getElementById('char-mouth').innerText = mouths[mouthIdx];
         }
@@ -93,6 +106,7 @@
         function startPrivate() {
             document.getElementById('menu').style.display = 'none';
             document.getElementById('chat-window').style.display = 'block';
+            document.getElementById('waiting-ad').style.display = 'block'; // SHOW AD
             socket.emit('find-pair');
         }
 
@@ -100,18 +114,19 @@
             socket.emit('skip', currentRoom);
             currentRoom = null;
             document.getElementById('messages').innerHTML = "";
-            addMessage('System', '', '#888', 'Searching for a new partner...');
+            document.getElementById('waiting-ad').style.display = 'block'; // SHOW AD AGAIN
             socket.emit('find-pair');
         }
 
         socket.on('pair-found', (data) => {
             currentRoom = data.room;
+            document.getElementById('waiting-ad').style.display = 'none'; // HIDE AD
             document.getElementById('messages').innerHTML = "";
-            addMessage('System', '', '#4cd137', 'Connected! Start chatting.');
+            addMessage('System', '', '#4cd137', 'Connected!');
         });
 
         socket.on('partner-skipped', () => {
-            addMessage('System', '', '#ff9f43', 'Partner skipped. Click "Skip" to find a new one.');
+            addMessage('System', '', '#ff9f43', 'Partner skipped. Click Skip to find new.');
             currentRoom = null;
         });
 
