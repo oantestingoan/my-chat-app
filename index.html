@@ -10,17 +10,14 @@
     <div id="overlay">
         <div id="modal">
             <h2>Customize Your Profile</h2>
-            
             <div id="avatar-preview">
                 <span id="char-eyes">o o</span><br>
                 <span id="char-mouth">___</span>
             </div>
-            
             <div class="customizer">
-                <button onclick="changeFeature('eyes')">Change Eyes</button>
-                <button onclick="changeFeature('mouth')">Change Mouth</button>
+                <button onclick="changeFeature('eyes')">Eyes</button>
+                <button onclick="changeFeature('mouth')">Mouth</button>
             </div>
-
             <input type="text" id="usernameInput" placeholder="Username" maxlength="15">
             <br>
             <label><input type="checkbox" id="tosCheck"> 18+ & Agree to Terms</label>
@@ -30,7 +27,11 @@
     </div>
 
     <div id="app" style="display:none;">
-        <h1>Omeguhl 🌐</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Omeguhl 🌐</h1>
+            <span id="counter-badge">🟢 <span id="count">0</span> Online</span>
+        </div>
+        
         <div id="menu">
             <div class="box">
                 <input type="text" id="roomInput" placeholder="Public Room Name">
@@ -56,11 +57,9 @@
         let currentRoom = null;
         let mode = '';
 
-        // Avatar Options (Scribbl style)
         const eyes = ["o o", "O O", "u u", "> <", "^ ^", "● ●"];
         const mouths = ["___", "  v  ", "  ◡  ", "  o  ", "  ~  "];
-        let eyeIdx = 0;
-        let mouthIdx = 0;
+        let eyeIdx = 0, mouthIdx = 0;
 
         function changeFeature(type) {
             if(type === 'eyes') eyeIdx = (eyeIdx + 1) % eyes.length;
@@ -69,14 +68,15 @@
             document.getElementById('char-mouth').innerText = mouths[mouthIdx];
         }
 
+        // UPDATE COUNT ON UI
+        socket.on('user-count', (count) => {
+            document.getElementById('count').innerText = count;
+        });
+
         function enterSite() {
             const user = document.getElementById('usernameInput').value;
-            if(!user || !document.getElementById('tosCheck').checked) {
-                return alert("Set username and agree to terms!");
-            }
-            const avatar = document.getElementById('avatar-preview').innerText;
-            socket.emit('set-profile', { username: user, avatar: avatar });
-            
+            if(!user || !document.getElementById('tosCheck').checked) return alert("Complete profile first!");
+            socket.emit('set-profile', { username: user, avatar: document.getElementById('avatar-preview').innerText });
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('app').style.display = 'block';
         }
@@ -131,8 +131,8 @@
 
         function addMessage(user, avatar, text) {
             const msgDiv = document.getElementById('messages');
-            const avatarHtml = avatar ? `<span class="chat-avatar">${avatar}</span>` : '';
-            msgDiv.innerHTML += `<div class="msg-row">${avatarHtml} <strong>${user}:</strong> ${text}</div>`;
+            const av = avatar ? `<span class="chat-avatar">${avatar}</span>` : '';
+            msgDiv.innerHTML += `<div class="msg-row">${av} <strong>${user}:</strong> ${text}</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         }
     </script>
