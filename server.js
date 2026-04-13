@@ -7,11 +7,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Since your files are all in one folder now:
 app.use(express.static(__dirname));
 
-let waitingUser = null; // Stores the ID of someone looking for a 1-on-1 chat
-
-// SIMPLE MODERATION: Add bad words to this list
+let waitingUser = null; 
 const BANNED_WORDS = ['badword1', 'badword2']; 
 
 function filterMessage(msg) {
@@ -24,40 +23,47 @@ function filterMessage(msg) {
 }
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-
-    // --- PUBLIC CHAT LOGIC ---
-    socket.on('join-public', () => {
-        socket.join('public-room');
-        socket.emit('chat-message', { user: 'System', text: 'Joined Public Chat' });
+    // --- CUSTOM PUBLIC ROOMS ---
+    socket.on('join-room', (roomName) => {
+        socket.leaveAll(); // Leave previous rooms
+        socket.join(roomName);
+        socket.emit('chat-message', { user: 'System', text: `Joined room: ${roomName}` });
     });
 
-    socket.on('send-public-msg', (msg) => {
-        const cleanMsg = filterMessage(msg);
-        io.to('public-room').emit('chat-message', { user: 'Anon', text: cleanMsg });
+    socket.on('send-public-msg', (data) => {
+        const cleanMsg = filterMessage(data.msg);
+        io.to(data.room).emit('chat-message', { user: 'Anon', text: cleanMsg });
     });
 
-    // --- 1-ON-1 ANONYMOUS LOGIC ---
+    // --- 1-ON-1 WITH AUTO-SKIP ---
     socket.on('find-pair', () => {
         if (waitingUser && waitingUser !== socket.id) {
-            // Match found!
             const partnerId = waitingUser;
             waitingUser = null;
-
-            const roomName = `room-${socket.id}-${partnerId}`;
+            const roomName = `pair-${socket.id}-${partnerId}`;
+            
             socket.join(roomName);
-            io.sockets.sockets.get(partnerId).join(roomName);
-
-            io.to(roomName).emit('pair-found', { room: roomName });
+            const partnerSocket = io.sockets.sockets.get(partnerId);
+            if(partnerSocket) {
+                partnerSocket.join(roomName);
+                io.to(roomName).emit('pair-found', { room: roomName });
+            }
         } else {
             waitingUser = socket.id;
-            socket.emit('chat-message', { user: 'System', text: 'Searching for a partner...' });
+            socket.emit('chat-message', { user: 'System', text: 'Searching...' });
         }
+    });
+
+    socket.on('skip', (roomName) => {
+        io.to(roomName).emit('partner-skipped'); // Tell both users someone skipped
+        // Force them to leave the room
+        io.in(roomName).socketsLeave(roomName);
     });
 
     socket.on('send-private-msg', (data) => {
         const cleanMsg = filterMessage(data.msg);
-        io.to(data.room).emit('chat-message', { user: 'Partner', text: cleanMsg });
+        socket.to(data.room).emit('chat-message', { user: 'Partner', text: cleanMsg });
+        socket.emit('chat-message', { user: 'You', text: cleanMsg });
     });
 
     socket.on('disconnect', () => {
@@ -66,6 +72,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running` bits));
