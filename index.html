@@ -9,32 +9,34 @@
 <body>
     <div id="overlay">
         <div id="modal">
-            <h2>Welcome to Omeguhl</h2>
-            <p>1. You must be 18 years or older.<br>
-               2. No harassment or bullying.<br>
-               3. Do not share personal info.</p>
-            <label>
-                <input type="checkbox" id="tosCheck"> I agree to the Terms of Service
-            </label>
+            <h2>Customize Your Profile</h2>
+            
+            <div id="avatar-preview">
+                <span id="char-eyes">o o</span><br>
+                <span id="char-mouth">___</span>
+            </div>
+            
+            <div class="customizer">
+                <button onclick="changeFeature('eyes')">Change Eyes</button>
+                <button onclick="changeFeature('mouth')">Change Mouth</button>
+            </div>
+
+            <input type="text" id="usernameInput" placeholder="Username" maxlength="15">
+            <br>
+            <label><input type="checkbox" id="tosCheck"> 18+ & Agree to Terms</label>
             <br><br>
-            <button onclick="enterSite()">Enter Chat</button>
+            <button onclick="enterSite()">Start Chatting</button>
         </div>
     </div>
 
     <div id="app" style="display:none;">
         <h1>Omeguhl 🌐</h1>
-        
         <div id="menu">
             <div class="box">
-                <h3>Public Rooms</h3>
-                <input type="text" id="roomInput" placeholder="Room name (e.g. Music)">
-                <button onclick="joinPublic()">Join/Create Room</button>
+                <input type="text" id="roomInput" placeholder="Public Room Name">
+                <button onclick="joinPublic()">Join Room</button>
             </div>
-            <hr>
-            <div class="box">
-                <h3>Private</h3>
-                <button onclick="startPrivate()">Find 1-on-1 Partner</button>
-            </div>
+            <button onclick="startPrivate()" style="width:100%; padding:20px;">Find 1-on-1 Partner</button>
         </div>
 
         <div id="chat-window" style="display:none;">
@@ -44,7 +46,7 @@
                 <button onclick="sendMessage()">Send</button>
                 <button id="skipBtn" style="background:orange; display:none;" onclick="skipPartner()">Skip</button>
             </div>
-            <button onclick="location.reload()" style="margin-top:10px; background:red;">Exit to Menu</button>
+            <button onclick="location.reload()" style="background:red; margin-top:10px;">Exit</button>
         </div>
     </div>
 
@@ -54,21 +56,36 @@
         let currentRoom = null;
         let mode = '';
 
+        // Avatar Options (Scribbl style)
+        const eyes = ["o o", "O O", "u u", "> <", "^ ^", "● ●"];
+        const mouths = ["___", "  v  ", "  ◡  ", "  o  ", "  ~  "];
+        let eyeIdx = 0;
+        let mouthIdx = 0;
+
+        function changeFeature(type) {
+            if(type === 'eyes') eyeIdx = (eyeIdx + 1) % eyes.length;
+            if(type === 'mouth') mouthIdx = (mouthIdx + 1) % mouths.length;
+            document.getElementById('char-eyes').innerText = eyes[eyeIdx];
+            document.getElementById('char-mouth').innerText = mouths[mouthIdx];
+        }
+
         function enterSite() {
-            if(document.getElementById('tosCheck').checked) {
-                document.getElementById('overlay').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-            } else {
-                alert("You must agree to the terms first!");
+            const user = document.getElementById('usernameInput').value;
+            if(!user || !document.getElementById('tosCheck').checked) {
+                return alert("Set username and agree to terms!");
             }
+            const avatar = document.getElementById('avatar-preview').innerText;
+            socket.emit('set-profile', { username: user, avatar: avatar });
+            
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
         }
 
         function joinPublic() {
-            const rName = document.getElementById('roomInput').value || 'General';
-            currentRoom = rName;
+            currentRoom = document.getElementById('roomInput').value || 'General';
             mode = 'public';
             showChat();
-            socket.emit('join-room', rName);
+            socket.emit('join-room', currentRoom);
         }
 
         function startPrivate() {
@@ -79,27 +96,24 @@
         }
 
         function skipPartner() {
-            if(currentRoom) {
-                socket.emit('skip', currentRoom);
-            } else {
-                location.reload(); // If searching, just refresh
-            }
+            if(currentRoom) socket.emit('skip', currentRoom);
+            else location.reload();
         }
 
         socket.on('pair-found', (data) => {
             currentRoom = data.room;
-            addMessage('System', 'Connected! Say hello.');
+            addMessage('System', '', 'Connected! 🤝');
         });
 
         socket.on('partner-skipped', () => {
-            addMessage('System', 'Partner skipped or disconnected.');
+            addMessage('System', '', 'Partner skipped.');
             currentRoom = null;
-            document.getElementById('skipBtn').innerText = 'Find New';
+            document.getElementById('skipBtn').innerText = 'New?';
             document.getElementById('skipBtn').onclick = () => location.reload();
         });
 
         socket.on('chat-message', (data) => {
-            addMessage(data.user, data.text);
+            addMessage(data.user, data.avatar, data.text);
         });
 
         function showChat() {
@@ -108,19 +122,17 @@
         }
 
         function sendMessage() {
-            const input = document.getElementById('msgInput');
-            if (!input.value) return;
-            if (mode === 'public') {
-                socket.emit('send-public-msg', { room: currentRoom, msg: input.value });
-            } else {
-                socket.emit('send-private-msg', { room: currentRoom, msg: input.value });
-            }
-            input.value = '';
+            const msg = document.getElementById('msgInput').value;
+            if (!msg) return;
+            if (mode === 'public') socket.emit('send-public-msg', { room: currentRoom, msg: msg });
+            else socket.emit('send-private-msg', { room: currentRoom, msg: msg });
+            document.getElementById('msgInput').value = '';
         }
 
-        function addMessage(user, text) {
+        function addMessage(user, avatar, text) {
             const msgDiv = document.getElementById('messages');
-            msgDiv.innerHTML += `<p><strong>${user}:</strong> ${text}</p>`;
+            const avatarHtml = avatar ? `<span class="chat-avatar">${avatar}</span>` : '';
+            msgDiv.innerHTML += `<div class="msg-row">${avatarHtml} <strong>${user}:</strong> ${text}</div>`;
             msgDiv.scrollTop = msgDiv.scrollHeight;
         }
     </script>
